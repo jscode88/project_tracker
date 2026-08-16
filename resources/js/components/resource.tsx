@@ -146,9 +146,11 @@ export function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement
 export function AmountInput({
     value,
     onChange,
+    placeholder,
 }: {
     value: string;
     onChange: (value: string) => void;
+    placeholder?: string;
 }) {
     const digits = value.replace(/\D/g, '');
     const displayValue = digits === '' ? '' : Number(digits).toLocaleString('id-ID');
@@ -157,6 +159,7 @@ export function AmountInput({
         <Input
             inputMode="numeric"
             value={displayValue}
+            placeholder={placeholder}
             onChange={(event) => onChange(event.target.value.replace(/\D/g, ''))}
         />
     );

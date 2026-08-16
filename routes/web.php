@@ -33,6 +33,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ]);
     })->name('dashboard');
 
+    Route::get('price-calculator', fn () => inertia('price-calculator'))->name('price-calculator');
+
     Route::get('project-owners/{projectOwner}/projects', [ProjectController::class, 'index'])->name('project-owners.projects.index');
     Route::get('projects/{project}/services', [ServiceController::class, 'index'])->name('projects.services.index');
     Route::get('projects/{project}/services/{service}/edit', [ServiceController::class, 'edit'])->name('projects.services.edit');

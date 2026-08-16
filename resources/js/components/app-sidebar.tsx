@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { Building2, CircleDollarSign, FolderKanban, LayoutGrid, Shield, UserRound, UsersRound } from 'lucide-react';
+import { Building2, Calculator, CircleDollarSign, FolderKanban, LayoutGrid, Shield, UserRound, UsersRound } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -57,6 +57,14 @@ const administrationNavItems: NavItem[] = [
     },
 ];
 
+const toolsNavItems: NavItem[] = [
+    {
+        title: 'Price Calculator',
+        href: '/price-calculator',
+        icon: Calculator,
+    },
+];
+
 const footerNavItems: NavItem[] = [];
 
 export function AppSidebar() {
@@ -76,6 +84,7 @@ export function AppSidebar() {
 
             <SidebarContent>
                 <NavMain items={mainNavItems} />
+                <NavMain items={toolsNavItems} label="Tool" />
                 <NavMain items={administrationNavItems} label="Administration" />
             </SidebarContent>
 
