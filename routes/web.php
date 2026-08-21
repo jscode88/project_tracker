@@ -3,6 +3,7 @@
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\PriceCalculatorController;
 use App\Http\Controllers\ProjectOwnerController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ServiceLogController;
@@ -33,7 +34,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ]);
     })->name('dashboard');
 
-    Route::get('price-calculator', fn () => inertia('price-calculator'))->name('price-calculator');
+    Route::get('price-calculator', [PriceCalculatorController::class, 'index'])->name('price-calculator.index');
+    Route::post('price-calculator', [PriceCalculatorController::class, 'store'])->name('price-calculator.store');
+    Route::put('price-calculator/{priceCalculation}', [PriceCalculatorController::class, 'update'])->name('price-calculator.update');
+    Route::delete('price-calculator/{priceCalculation}', [PriceCalculatorController::class, 'destroy'])->name('price-calculator.destroy');
+    Route::put('price-calculator-settings', [PriceCalculatorController::class, 'updateSettings'])->name('price-calculator.settings.update');
 
     Route::get('project-owners/{projectOwner}/projects', [ProjectController::class, 'index'])->name('project-owners.projects.index');
     Route::get('projects/{project}/services', [ServiceController::class, 'index'])->name('projects.services.index');

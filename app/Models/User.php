@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
@@ -36,5 +37,10 @@ class User extends Authenticatable
     public function usergroup(): BelongsTo
     {
         return $this->belongsTo(UserGroup::class, 'usergroup_id');
+    }
+
+    public function priceCalculations(): HasMany
+    {
+        return $this->hasMany(PriceCalculation::class);
     }
 }

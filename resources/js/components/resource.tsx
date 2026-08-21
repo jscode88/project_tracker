@@ -7,7 +7,11 @@ import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import type { Paginated } from '@/types/domain';
 
@@ -27,8 +31,14 @@ export function PageHeader({
             <Head title={title} />
             <div className="flex flex-col gap-3 border-b px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="text-2xl font-semibold tracking-normal">{title}</h1>
-                    {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
+                    <h1 className="text-2xl font-semibold tracking-normal">
+                        {title}
+                    </h1>
+                    {description ? (
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            {description}
+                        </p>
+                    ) : null}
                 </div>
                 {actionHref ? (
                     <Button asChild>
@@ -44,20 +54,37 @@ export function PageHeader({
 }
 
 export function PageBody({ children }: { children: ReactNode }) {
-    return <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto p-4">{children}</div>;
+    return (
+        <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto p-4">
+            {children}
+        </div>
+    );
 }
 
-export function SearchBar({ defaultValue = '', action }: { defaultValue?: string; action: string }) {
+export function SearchBar({
+    defaultValue = '',
+    action,
+}: {
+    defaultValue?: string;
+    action: string;
+}) {
     const [search, setSearch] = useState(defaultValue);
 
     function submit(event: FormEvent) {
         event.preventDefault();
-        router.get(action, search ? { search } : {}, { preserveState: true, replace: true });
+        router.get(action, search ? { search } : {}, {
+            preserveState: true,
+            replace: true,
+        });
     }
 
     return (
         <form onSubmit={submit} className="flex max-w-xl gap-2">
-            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search" />
+            <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search"
+            />
             <Button type="submit" variant="secondary">
                 <Search className="size-4" />
                 Search
@@ -66,10 +93,20 @@ export function SearchBar({ defaultValue = '', action }: { defaultValue?: string
     );
 }
 
-export function DataTable({ children, className = 'min-w-[720px]' }: { children: ReactNode; className?: string }) {
+export function DataTable({
+    children,
+    className = 'min-w-[720px]',
+}: {
+    children: ReactNode;
+    className?: string;
+}) {
     return (
         <div className="overflow-hidden rounded-lg border bg-card">
-            <table className={`w-full text-sm [&_tbody_tr]:transition-colors [&_tbody_tr:hover]:bg-muted/50 ${className}`}>{children}</table>
+            <table
+                className={`w-full text-sm [&_tbody_tr]:transition-colors [&_tbody_tr:hover]:bg-muted/50 ${className}`}
+            >
+                {children}
+            </table>
         </div>
     );
 }
@@ -86,8 +123,23 @@ export function Pagination<T>({ page }: { page: Paginated<T> }) {
             </div>
             <div className="flex flex-wrap gap-1">
                 {page.links.map((link, index) => (
-                    <Button key={`${link.label}-${index}`} asChild={Boolean(link.url)} disabled={!link.url} size="sm" variant={link.active ? 'default' : 'outline'}>
-                        {link.url ? <Link href={link.url} dangerouslySetInnerHTML={{ __html: link.label }} /> : <span dangerouslySetInnerHTML={{ __html: link.label }} />}
+                    <Button
+                        key={`${link.label}-${index}`}
+                        asChild={Boolean(link.url)}
+                        disabled={!link.url}
+                        size="sm"
+                        variant={link.active ? 'default' : 'outline'}
+                    >
+                        {link.url ? (
+                            <Link
+                                href={link.url}
+                                dangerouslySetInnerHTML={{ __html: link.label }}
+                            />
+                        ) : (
+                            <span
+                                dangerouslySetInnerHTML={{ __html: link.label }}
+                            />
+                        )}
                     </Button>
                 ))}
             </div>
@@ -95,7 +147,13 @@ export function Pagination<T>({ page }: { page: Paginated<T> }) {
     );
 }
 
-export function CrudActions({ editHref, deleteHref }: { editHref: string; deleteHref: string }) {
+export function CrudActions({
+    editHref,
+    deleteHref,
+}: {
+    editHref: string;
+    deleteHref: string;
+}) {
     function remove() {
         if (window.confirm('Delete this record?')) {
             router.delete(deleteHref);
@@ -109,7 +167,13 @@ export function CrudActions({ editHref, deleteHref }: { editHref: string; delete
                     <Pencil className="size-4" />
                 </Link>
             </Button>
-            <Button type="button" size="icon" variant="destructive" title="Delete" onClick={remove}>
+            <Button
+                type="button"
+                size="icon"
+                variant="destructive"
+                title="Delete"
+                onClick={remove}
+            >
                 <Trash2 className="size-4" />
             </Button>
         </div>
@@ -134,7 +198,9 @@ export function Field({
     );
 }
 
-export function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+export function Textarea(
+    props: React.TextareaHTMLAttributes<HTMLTextAreaElement>,
+) {
     return (
         <textarea
             {...props}
@@ -152,15 +218,18 @@ export function AmountInput({
     onChange: (value: string) => void;
     placeholder?: string;
 }) {
-    const digits = value.replace(/\D/g, '');
-    const displayValue = digits === '' ? '' : Number(digits).toLocaleString('id-ID');
+    const digits = String(value ?? '').replace(/\D/g, '');
+
+    const displayValue = digits ? Number(digits).toLocaleString('id-ID') : '';
 
     return (
         <Input
             inputMode="numeric"
             value={displayValue}
             placeholder={placeholder}
-            onChange={(event) => onChange(event.target.value.replace(/\D/g, ''))}
+            onChange={(event) =>
+                onChange(event.target.value.replace(/\D/g, ''))
+            }
         />
     );
 }
@@ -181,10 +250,15 @@ export function DatePicker({
                 <Button
                     type="button"
                     variant="outline"
-                    className={cn('w-full justify-start text-left font-normal', !selected && 'text-muted-foreground')}
+                    className={cn(
+                        'w-full justify-start text-left font-normal',
+                        !selected && 'text-muted-foreground',
+                    )}
                 >
                     <CalendarIcon className="size-4" />
-                    {selected ? selected.toLocaleDateString('id-ID') : 'Select date'}
+                    {selected
+                        ? selected.toLocaleDateString('id-ID')
+                        : 'Select date'}
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
@@ -232,25 +306,42 @@ export function CheckField({
 }) {
     return (
         <label className="flex items-center gap-2 text-sm font-medium">
-            <Checkbox checked={checked} onCheckedChange={(value) => onChange(value === true)} />
+            <Checkbox
+                checked={checked}
+                onCheckedChange={(value) => onChange(value === true)}
+            />
             {label}
         </label>
     );
 }
 
-export function FormShell({ children, title }: { children: ReactNode; title: string }) {
+export function FormShell({
+    children,
+    title,
+}: {
+    children: ReactNode;
+    title: string;
+}) {
     return (
         <>
             <Head title={title} />
             <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4">
-                <h1 className="text-2xl font-semibold tracking-normal">{title}</h1>
+                <h1 className="text-2xl font-semibold tracking-normal">
+                    {title}
+                </h1>
                 <div className="rounded-lg border bg-card p-5">{children}</div>
             </div>
         </>
     );
 }
 
-export function FormActions({ cancelHref, processing }: { cancelHref: string; processing: boolean }) {
+export function FormActions({
+    cancelHref,
+    processing,
+}: {
+    cancelHref: string;
+    processing: boolean;
+}) {
     function cancel() {
         if (window.history.length > 1) {
             window.history.back();
@@ -273,7 +364,10 @@ export function FormActions({ cancelHref, processing }: { cancelHref: string; pr
     );
 }
 
-export function money(amount: number | string | null | undefined, currency = 'IDR') {
+export function money(
+    amount: number | string | null | undefined,
+    currency = 'IDR',
+) {
     const value = Number(amount ?? 0);
     const currencyCode = /^[A-Z]{3}$/.test(currency) ? currency : 'IDR';
 
