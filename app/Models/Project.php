@@ -38,6 +38,11 @@ class Project extends Model
         return $this->hasMany(Service::class)->orderBy('type');
     }
 
+    public function priceCalculations(): HasMany
+    {
+        return $this->hasMany(PriceCalculation::class)->latest();
+    }
+
     public function scopeForCurrentUser($query)
     {
         return $query->where('user_id', auth()->id());

@@ -2,8 +2,8 @@
 
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PriceCalculatorController;
+use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectOwnerController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ServiceLogController;
@@ -35,6 +35,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('dashboard');
 
     Route::get('price-calculator', [PriceCalculatorController::class, 'index'])->name('price-calculator.index');
+    Route::get('price-calculator/{priceCalculation}', [PriceCalculatorController::class, 'show'])->name('price-calculator.show');
     Route::post('price-calculator', [PriceCalculatorController::class, 'store'])->name('price-calculator.store');
     Route::put('price-calculator/{priceCalculation}', [PriceCalculatorController::class, 'update'])->name('price-calculator.update');
     Route::delete('price-calculator/{priceCalculation}', [PriceCalculatorController::class, 'destroy'])->name('price-calculator.destroy');

@@ -1,6 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import { Pencil, Save, Settings2, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
     AmountInput,
     DataTable,
@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import type { Project } from '@/types';
 
 const ADDONS = [
     ['payment', 'Payment Gateway (Midtrans/Xendit/etc.)'],
@@ -94,6 +95,8 @@ type FormData = {
 };
 type Calculation = {
     id: number;
+    project_id: number | null;
+    project?: Project | null;
     name: string;
     inputs: FormData;
     price_snapshot: Record<string, number>;
@@ -118,6 +121,11 @@ const initialForm = (): FormData => ({
     deadlineUrgency: '',
     revisionIncluded: '',
 });
+const calculationFormData = (calculation: Calculation): FormData => ({
+    ...calculation.inputs,
+    vpsPrice: String(calculation.inputs.vpsPrice ?? ''),
+    domainPrice: String(calculation.inputs.domainPrice ?? ''),
+});
 const money = (value: number) =>
     `Rp ${Math.max(0, Math.round(value || 0)).toLocaleString('id-ID')}`;
 const number = (value: string) => Number(value) || 0;
@@ -125,16 +133,33 @@ const number = (value: string) => Number(value) || 0;
 export default function PriceCalculator({
     settings,
     calculations,
+    projects,
+    selectedCalculationId,
 }: {
     settings: Pricing;
     calculations: Calculation[];
+    projects: Project[];
+    selectedCalculationId?: number | null;
 }) {
+    const linkedCalculation = selectedCalculationId
+        ? (calculations.find((item) => item.id === selectedCalculationId) ??
+          null)
+        : null;
     const [tab, setTab] = useState<'calculator' | 'saved' | 'settings'>(
-        'calculator',
+        selectedCalculationId && !linkedCalculation ? 'saved' : 'calculator',
     );
-    const [form, setForm] = useState<FormData>(initialForm);
-    const [name, setName] = useState('');
-    const [editing, setEditing] = useState<Calculation | null>(null);
+    const [form, setForm] = useState<FormData>(
+        linkedCalculation
+            ? calculationFormData(linkedCalculation)
+            : initialForm,
+    );
+    const [name, setName] = useState(linkedCalculation?.name ?? '');
+    const [projectId, setProjectId] = useState(
+        String(linkedCalculation?.project_id ?? ''),
+    );
+    const [editing, setEditing] = useState<Calculation | null>(
+        linkedCalculation,
+    );
     const [pricing, setPricing] = useState<Pricing>(settings);
     const update = <K extends keyof FormData>(key: K, value: FormData[K]) =>
         setForm((current) => ({ ...current, [key]: value }));
@@ -150,6 +175,7 @@ export default function PriceCalculator({
             inputs: form,
             price_snapshot: { ...settings, ...calc },
             total: Math.round(calc.total),
+            project_id: projectId ? Number(projectId) : null,
         };
 
         if (editing) {
@@ -165,16 +191,14 @@ export default function PriceCalculator({
     const reset = () => {
         setForm(initialForm());
         setName('');
+        setProjectId('');
         setEditing(null);
         setTab('calculator');
     };
     const edit = (calculation: Calculation) => {
-        setForm({
-            ...calculation.inputs,
-            vpsPrice: String(calculation.inputs.vpsPrice ?? ''),
-            domainPrice: String(calculation.inputs.domainPrice ?? ''),
-        });
+        setForm(calculationFormData(calculation));
         setName(calculation.name);
+        setProjectId(String(calculation.project_id ?? ''));
         setEditing(calculation);
         setTab('calculator');
     };
@@ -493,6 +517,9 @@ export default function PriceCalculator({
                                     complete={complete}
                                     name={name}
                                     setName={setName}
+                                    projectId={projectId}
+                                    setProjectId={setProjectId}
+                                    projects={projects}
                                     editing={editing}
                                     submit={submit}
                                     reset={reset}
@@ -600,6 +627,9 @@ function Aside({
     complete,
     name,
     setName,
+    projectId,
+    setProjectId,
+    projects,
     editing,
     submit,
     reset,
@@ -609,6 +639,9 @@ function Aside({
     complete: boolean;
     name: string;
     setName: (value: string) => void;
+    projectId: string;
+    setProjectId: (value: string) => void;
+    projects: Project[];
     editing: Calculation | null;
     submit: () => void;
     reset: () => void;
@@ -690,6 +723,17 @@ function Aside({
                         onChange={(event) => setName(event.target.value)}
                         placeholder="e.g. Online Store — Client A"
                     />
+                    <Label htmlFor="calculation-project">Project</Label>
+                    <Select
+                        id="calculation-project"
+                        value={projectId}
+                        onChange={setProjectId}
+                        options={projects.map((project) => [
+                            String(project.id),
+                            project.name,
+                        ])}
+                        placeholder="No linked project"
+                    />
                     <div className="flex gap-2">
                         <Button
                             className="flex-1"
@@ -725,6 +769,7 @@ function Saved({
                 <thead className="bg-muted/50 text-left">
                     <tr>
                         <th className="px-4 py-3">Name</th>
+                        <th className="px-4 py-3">Project</th>
                         <th className="px-4 py-3">Saved</th>
                         <th className="px-4 py-3 text-right">Total</th>
                         <th className="px-4 py-3 text-right">Actions</th>
@@ -735,6 +780,9 @@ function Saved({
                         <tr key={calculation.id} className="border-t">
                             <td className="px-4 py-3 font-medium">
                                 {calculation.name}
+                            </td>
+                            <td className="px-4 py-3">
+                                {calculation.project?.name ?? '-'}
                             </td>
                             <td className="px-4 py-3 text-muted-foreground">
                                 {new Date(
@@ -755,7 +803,7 @@ function Saved({
                                         <Pencil />
                                     </Button>
                                     <Button
-                                        size="icon"
+                                        size="sm"
                                         variant="destructive"
                                         title="Delete"
                                         onClick={() => {
@@ -770,7 +818,8 @@ function Saved({
                                             }
                                         }}
                                     >
-                                        <Trash2 />
+                                        <Trash2 className="size-4" />
+                                        Delete
                                     </Button>
                                 </div>
                             </td>
@@ -779,7 +828,7 @@ function Saved({
                     {calculations.length === 0 && (
                         <tr>
                             <td
-                                colSpan={4}
+                                colSpan={5}
                                 className="px-4 py-12 text-center text-muted-foreground"
                             >
                                 No saved calculations yet.
@@ -845,14 +894,6 @@ function SettingsInput({
     const format = (amount: number) =>
         amount.toLocaleString('id-ID', { maximumFractionDigits: 0 });
     const [draft, setDraft] = useState(format(value));
-
-    useEffect(() => {
-        const numericDraft = Number(draft.replace(/\D/g, '')) || 0;
-
-        if (numericDraft !== value) {
-            setDraft(format(value));
-        }
-    }, [value]);
 
     return (
         <Input
@@ -966,11 +1007,13 @@ function AmountField({
     );
 }
 function Select({
+    id,
     value,
     onChange,
     options,
     placeholder,
 }: {
+    id?: string;
     value: string;
     onChange: (value: string) => void;
     options: readonly (readonly [string, string | number])[];
@@ -978,6 +1021,7 @@ function Select({
 }) {
     return (
         <select
+            id={id}
             className="h-9 w-full rounded-md border border-input bg-background px-3 text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
             value={value}
             onChange={(event) => onChange(event.target.value)}

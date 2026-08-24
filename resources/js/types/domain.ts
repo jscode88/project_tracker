@@ -26,10 +26,20 @@ export interface Project {
     name: string;
     owner_id: number;
     owner?: ProjectOwner;
+    price_calculations?: PriceCalculation[];
     url: string | null;
     referrer: string | null;
     commission_fee: string | number | null;
     is_active: boolean;
+}
+
+export interface PriceCalculation {
+    id: number;
+    project_id: number | null;
+    project?: Project | null;
+    name: string;
+    total: number;
+    created_at: string;
 }
 
 export interface Payment {

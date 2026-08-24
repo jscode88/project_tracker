@@ -4,12 +4,26 @@ namespace App\Http\Controllers;
 
 use App\Models\PriceCalculation;
 use App\Models\PriceCalculationSetting;
+use App\Models\Project;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class PriceCalculatorController extends Controller
 {
     public function index(Request $request)
+    {
+        return $this->renderCalculator($request);
+    }
+
+    public function show(Request $request, PriceCalculation $priceCalculation)
+    {
+        $this->authorizeCalculation($request, $priceCalculation);
+
+        return $this->renderCalculator($request, $priceCalculation);
+    }
+
+    private function renderCalculator(Request $request, ?PriceCalculation $selectedCalculation = null)
     {
         $settings = PriceCalculationSetting::firstOrCreate(
             ['user_id' => $request->user()->id],
@@ -18,7 +32,9 @@ class PriceCalculatorController extends Controller
 
         return Inertia::render('price-calculator', [
             'settings' => array_replace(PriceCalculationSetting::DEFAULT_PRICING, $settings->pricing),
-            'calculations' => PriceCalculation::where('user_id', $request->user()->id)->latest()->get(),
+            'calculations' => PriceCalculation::where('user_id', $request->user()->id)->with('project')->latest()->get(),
+            'projects' => Project::forCurrentUser()->orderBy('name')->get(),
+            'selectedCalculationId' => $selectedCalculation?->id,
         ]);
     }
 
@@ -29,6 +45,10 @@ class PriceCalculatorController extends Controller
             'inputs' => ['required', 'array'],
             'price_snapshot' => ['required', 'array'],
             'total' => ['required', 'integer', 'min:0'],
+            'project_id' => [
+                'nullable',
+                Rule::exists('projects', 'id')->where('user_id', $request->user()->id),
+            ],
         ]);
         $request->user()->priceCalculations()->create($data);
 
@@ -43,6 +63,10 @@ class PriceCalculatorController extends Controller
             'inputs' => ['required', 'array'],
             'price_snapshot' => ['required', 'array'],
             'total' => ['required', 'integer', 'min:0'],
+            'project_id' => [
+                'nullable',
+                Rule::exists('projects', 'id')->where('user_id', $request->user()->id),
+            ],
         ]);
         $priceCalculation->update($data);
 

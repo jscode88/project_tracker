@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PriceCalculation;
 use App\Models\Project;
 use App\Models\ProjectOwner;
 use App\Models\Service;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class ProjectController extends Controller
@@ -15,7 +17,7 @@ class ProjectController extends Controller
     public function index(Request $request, ?ProjectOwner $projectOwner = null)
     {
         $query = Project::forCurrentUser()
-            ->with('owner')
+            ->with(['owner', 'priceCalculations'])
             ->when($projectOwner?->id, fn ($query) => $query->where('owner_id', $projectOwner->id))
             ->when($request->string('search')->toString(), function ($query, string $search) {
                 $query->where(function ($query) use ($search) {
@@ -41,13 +43,22 @@ class ProjectController extends Controller
         return Inertia::render('projects/form', [
             'project' => null,
             'owners' => ProjectOwner::forCurrentUser()->orderBy('name')->get(),
+            'priceCalculations' => PriceCalculation::where('user_id', $request->user()->id)
+                ->whereNull('project_id')
+                ->latest()
+                ->get(),
             'selectedOwner' => $request->integer('owner_id') ?: null,
         ]);
     }
 
     public function store(Request $request)
     {
-        $project = Project::create($this->validated($request) + ['user_id' => $request->user()->id]);
+        $data = $this->validated($request);
+        $priceCalculationIds = $data['price_calculation_ids'] ?? [];
+        unset($data['price_calculation_ids']);
+
+        $project = Project::create($data + ['user_id' => $request->user()->id]);
+        $this->syncPriceCalculations($project, $priceCalculationIds);
         $this->ensureDefaultServices($project);
 
         return $this->redirectToFormOrigin(route('projects.index'));
@@ -59,15 +70,24 @@ class ProjectController extends Controller
         $this->rememberFormOrigin($request);
 
         return Inertia::render('projects/form', [
-            'project' => $project,
+            'project' => $project->load('priceCalculations'),
             'owners' => ProjectOwner::forCurrentUser()->orderBy('name')->get(),
+            'priceCalculations' => PriceCalculation::where('user_id', $request->user()->id)
+                ->where(fn ($query) => $query->whereNull('project_id')->orWhere('project_id', $project->id))
+                ->latest()
+                ->get(),
         ]);
     }
 
     public function update(Request $request, Project $project)
     {
         $this->authorizeProject($project);
-        $project->update($this->validated($request));
+        $data = $this->validated($request);
+        $priceCalculationIds = $data['price_calculation_ids'] ?? [];
+        unset($data['price_calculation_ids']);
+
+        $project->update($data);
+        $this->syncPriceCalculations($project, $priceCalculationIds);
         $this->ensureDefaultServices($project->refresh());
 
         return $this->redirectToFormOrigin(route('projects.index'));
@@ -90,7 +110,27 @@ class ProjectController extends Controller
             'referrer' => ['nullable', 'string', 'max:255'],
             'commission_fee' => ['nullable', 'numeric'],
             'is_active' => ['boolean'],
+            'price_calculation_ids' => ['array'],
+            'price_calculation_ids.*' => [
+                Rule::exists('price_calculations', 'id')->where('user_id', $request->user()->id),
+            ],
         ]);
+    }
+
+    private function syncPriceCalculations(Project $project, array $priceCalculationIds): void
+    {
+        PriceCalculation::where('user_id', $project->user_id)
+            ->where('project_id', $project->id)
+            ->when($priceCalculationIds !== [], fn ($query) => $query->whereNotIn('id', $priceCalculationIds))
+            ->update(['project_id' => null]);
+
+        if ($priceCalculationIds === []) {
+            return;
+        }
+
+        PriceCalculation::where('user_id', $project->user_id)
+            ->whereIn('id', $priceCalculationIds)
+            ->update(['project_id' => $project->id]);
     }
 
     private function ensureDefaultServices(Project $project): void
