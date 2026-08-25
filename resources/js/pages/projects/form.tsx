@@ -22,16 +22,24 @@ export default function ProjectForm({
     owners,
     priceCalculations,
     selectedOwner,
+    conversionEntry,
 }: {
     project: Project | null;
     owners: ProjectOwner[];
     priceCalculations: PriceCalculation[];
-    selectedOwner: number | null;
+    selectedOwner?: number | null;
+    conversionEntry?: {
+        id: number;
+        title: string;
+        customer_name: string | null;
+    } | null;
 }) {
     const form = useForm({
-        name: project?.name ?? '',
+        name: project?.name ?? conversionEntry?.title ?? '',
         owner_id: String(
-            project?.owner_id ?? selectedOwner ?? owners[0]?.id ?? '',
+            project?.owner_id ??
+                selectedOwner ??
+                (conversionEntry ? '' : (owners[0]?.id ?? '')),
         ),
         url: project?.url ?? '',
         referrer: project?.referrer ?? '',
@@ -41,6 +49,7 @@ export default function ProjectForm({
                 String(calculation.id),
             ) ?? [],
         is_active: project?.is_active ?? true,
+        ideabook_entry_id: conversionEntry ? String(conversionEntry.id) : null,
     });
 
     function togglePriceCalculation(id: number) {
@@ -68,8 +77,24 @@ export default function ProjectForm({
     }
 
     return (
-        <FormShell title={project ? 'Edit Project' : 'New Project'}>
+        <FormShell
+            title={
+                project
+                    ? 'Edit Project'
+                    : conversionEntry
+                      ? 'Convert Enquiry to Project'
+                      : 'New Project'
+            }
+        >
             <form onSubmit={submit} className="grid gap-4">
+                {conversionEntry && (
+                    <p className="border-b pb-4 text-sm text-muted-foreground">
+                        Enquiry from{' '}
+                        <span className="font-medium text-foreground">
+                            {conversionEntry.customer_name ?? 'Customer'}
+                        </span>
+                    </p>
+                )}
                 <Field label="Name" error={form.errors.name}>
                     <Input
                         value={form.data.name}
@@ -167,7 +192,9 @@ export default function ProjectForm({
                     onChange={(checked) => form.setData('is_active', checked)}
                 />
                 <FormActions
-                    cancelHref="/projects"
+                    cancelHref={
+                        conversionEntry ? '/ideabook/pipeline' : '/projects'
+                    }
                     processing={form.processing}
                 />
             </form>

@@ -41,6 +41,13 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            'flash' => [
+                'ai_title_generation' => fn () => $request->session()->get('ai_title_generation', [
+                    'failed' => false,
+                    'operation' => null,
+                    'entry_type' => null,
+                ]),
+            ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

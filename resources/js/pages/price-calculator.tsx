@@ -1,5 +1,5 @@
-import { Head, router } from '@inertiajs/react';
-import { Pencil, Save, Settings2, Trash2 } from 'lucide-react';
+import { Link, router } from '@inertiajs/react';
+import { BookOpen, Pencil, Save, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import {
     AmountInput,
@@ -75,6 +75,7 @@ const REVISIONS = {
     3: '3 major revisions',
 } as const;
 type Pricing = Record<string, number>;
+type PriceCalculatorView = 'calculator' | 'saved' | 'settings';
 type FormData = {
     workedBefore: boolean | null;
     lastSalary: string;
@@ -96,12 +97,25 @@ type FormData = {
 type Calculation = {
     id: number;
     project_id: number | null;
+    problem_id: number | null;
     project?: Project | null;
+    problem?: Pick<Enquiry, 'id' | 'title' | 'customer_name'> | null;
     name: string;
     inputs: FormData;
     price_snapshot: Record<string, number>;
     total: number;
     created_at: string;
+};
+type Enquiry = {
+    id: number;
+    title: string;
+    customer_name: string | null;
+    project_id: number | null;
+    content: string;
+    proposed_solution: string | null;
+    expected_budget: string | null;
+    expected_budget_currency: string | null;
+    desired_delivery_date: string | null;
 };
 const initialForm = (): FormData => ({
     workedBefore: null,
@@ -135,27 +149,33 @@ export default function PriceCalculator({
     calculations,
     projects,
     selectedCalculationId,
+    view,
+    enquiry,
 }: {
     settings: Pricing;
     calculations: Calculation[];
     projects: Project[];
     selectedCalculationId?: number | null;
+    view: PriceCalculatorView;
+    enquiry: Enquiry | null;
 }) {
     const linkedCalculation = selectedCalculationId
         ? (calculations.find((item) => item.id === selectedCalculationId) ??
           null)
         : null;
-    const [tab, setTab] = useState<'calculator' | 'saved' | 'settings'>(
-        selectedCalculationId && !linkedCalculation ? 'saved' : 'calculator',
-    );
     const [form, setForm] = useState<FormData>(
         linkedCalculation
             ? calculationFormData(linkedCalculation)
             : initialForm,
     );
-    const [name, setName] = useState(linkedCalculation?.name ?? '');
+    const [name, setName] = useState(
+        linkedCalculation?.name ??
+            (enquiry
+                ? `${enquiry.customer_name ?? enquiry.title} estimate`
+                : ''),
+    );
     const [projectId, setProjectId] = useState(
-        String(linkedCalculation?.project_id ?? ''),
+        String(linkedCalculation?.project_id ?? enquiry?.project_id ?? ''),
     );
     const [editing, setEditing] = useState<Calculation | null>(
         linkedCalculation,
@@ -176,6 +196,7 @@ export default function PriceCalculator({
             price_snapshot: { ...settings, ...calc },
             total: Math.round(calc.total),
             project_id: projectId ? Number(projectId) : null,
+            problem_id: linkedCalculation?.problem_id ?? enquiry?.id ?? null,
         };
 
         if (editing) {
@@ -193,344 +214,381 @@ export default function PriceCalculator({
         setName('');
         setProjectId('');
         setEditing(null);
-        setTab('calculator');
     };
     const edit = (calculation: Calculation) => {
-        setForm(calculationFormData(calculation));
-        setName(calculation.name);
-        setProjectId(String(calculation.project_id ?? ''));
-        setEditing(calculation);
-        setTab('calculator');
+        router.get(`/price-calculator/${calculation.id}`);
     };
     const saveSettings = () =>
-        router.put(
-            '/price-calculator-settings',
-            { pricing },
-            { onSuccess: () => setTab('calculator') },
-        );
+        router.put('/price-calculator-settings', { pricing });
+
+    const pageHeader = {
+        calculator: {
+            title: 'Price Calculator',
+            description: 'Estimate and save a project fee calculation.',
+        },
+        saved: {
+            title: 'Saved Calculations',
+            description: 'Review and manage saved price calculations.',
+        },
+        settings: {
+            title: 'Price Calculator Settings',
+            description: 'Configure the rates used by the calculator.',
+        },
+    }[view];
 
     return (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <Head title="Price Calculator" />
             <PageHeader
-                title="Price Calculator"
-                description="Estimate, save, and manage project fee calculations."
+                title={pageHeader.title}
+                description={pageHeader.description}
             />
             <PageBody>
                 <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
-                    <div className="flex shrink-0 gap-2 border-b">
-                        <Tab
-                            active={tab === 'calculator'}
-                            onClick={() => setTab('calculator')}
-                        >
-                            Calculator
-                        </Tab>
-                        <Tab
-                            active={tab === 'saved'}
-                            onClick={() => setTab('saved')}
-                        >
-                            Saved calculations ({calculations.length})
-                        </Tab>
-                        <Tab
-                            active={tab === 'settings'}
-                            onClick={() => setTab('settings')}
-                        >
-                            <Settings2 />
-                            Settings
-                        </Tab>
-                    </div>
-                    {tab === 'calculator' && (
-                        <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_360px] gap-4 overflow-hidden">
-                            <div className="min-w-0 overflow-x-auto overflow-y-auto pr-1">
-                                <div className="grid w-full min-w-[736px] grid-cols-[repeat(auto-fit,_360px)] content-start gap-4">
-                                    <Section number="01" title="Price basis">
-                                        <p>
-                                            Have you worked professionally
-                                            before?
-                                        </p>
-                                        <Toggle
-                                            value={form.workedBefore}
-                                            onChange={(value) =>
-                                                update('workedBefore', value)
-                                            }
-                                            yes="Yes"
-                                            no="No"
-                                        />
-                                        {form.workedBefore === true && (
-                                            <AmountField
-                                                label="Last monthly salary"
-                                                value={form.lastSalary}
+                    {view === 'calculator' && (
+                        <div className="flex min-h-0 flex-1 flex-col gap-4">
+                            {enquiry && <EnquiryReference enquiry={enquiry} />}
+                            <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_360px] gap-4 overflow-hidden">
+                                <div className="min-w-0 overflow-x-auto overflow-y-auto pr-1">
+                                    <div className="grid w-full min-w-[736px] grid-cols-[repeat(auto-fit,_360px)] content-start gap-4">
+                                        <Section
+                                            number="01"
+                                            title="Price basis"
+                                        >
+                                            <p>
+                                                Have you worked professionally
+                                                before?
+                                            </p>
+                                            <Toggle
+                                                value={form.workedBefore}
                                                 onChange={(value) =>
-                                                    update('lastSalary', value)
+                                                    update(
+                                                        'workedBefore',
+                                                        value,
+                                                    )
                                                 }
-                                                placeholder="e.g. 8,000,000"
+                                                yes="Yes"
+                                                no="No"
                                             />
-                                        )}
-                                        {form.workedBefore === false && (
-                                            <AmountField
-                                                label="Laptop price used for coding"
-                                                value={form.laptopPrice}
-                                                onChange={(value) =>
-                                                    update('laptopPrice', value)
-                                                }
-                                                placeholder="e.g. 10,000,000"
-                                            />
-                                        )}
-                                    </Section>
-                                    <Section number="02" title="CRUD features">
-                                        <p>How many core tables need CRUD?</p>
-                                        <AmountInput
-                                            value={form.crudCount}
-                                            onChange={(value) =>
-                                                update('crudCount', value)
-                                            }
-                                        />
-                                        <Hint>
-                                            {money(settings.crud_per_table)} per
-                                            table
-                                        </Hint>
-                                    </Section>
-                                    <Section number="03" title="Login feature">
-                                        <p>Does it need login?</p>
-                                        <Toggle
-                                            value={form.hasLogin}
-                                            onChange={(value) => {
-                                                update('hasLogin', value);
-
-                                                if (!value) {
-                                                    update('loginType', '');
-                                                }
-                                            }}
-                                            yes="Required"
-                                            no="Not required"
-                                        />
-                                        {form.hasLogin && (
-                                            <Select
-                                                value={form.loginType}
-                                                onChange={(value) =>
-                                                    update('loginType', value)
-                                                }
-                                                options={[
-                                                    [
-                                                        'manual',
-                                                        `Manual — ${money(settings.login_manual)}`,
-                                                    ],
-                                                    [
-                                                        'google',
-                                                        `Google — ${money(settings.login_google)}`,
-                                                    ],
-                                                    [
-                                                        'both',
-                                                        `Manual + Google — ${money(settings.login_both)}`,
-                                                    ],
-                                                ]}
-                                                placeholder="Choose login type"
-                                            />
-                                        )}
-                                    </Section>
-                                    <Section
-                                        number="04"
-                                        title="Database relations"
-                                    >
-                                        <p>
-                                            How many relations are needed
-                                            between tables?
-                                        </p>
-                                        <AmountInput
-                                            value={form.relationCount}
-                                            onChange={(value) =>
-                                                update('relationCount', value)
-                                            }
-                                        />
-                                        <Hint>
-                                            {money(settings.relation_per_item)}{' '}
-                                            per relation
-                                        </Hint>
-                                    </Section>
-                                    <Section number="05" title="Frontend">
-                                        <p>What is the frontend complexity?</p>
-                                        <Select
-                                            value={form.frontendLevel}
-                                            onChange={(value) =>
-                                                update(
-                                                    'frontendLevel',
-                                                    value as FormData['frontendLevel'],
-                                                )
-                                            }
-                                            options={Object.entries(FRONTEND)}
-                                            placeholder="Choose complexity"
-                                        />
-                                        <AmountField
-                                            label="Third-party library count"
-                                            value={form.libraryCount}
-                                            onChange={(value) =>
-                                                update('libraryCount', value)
-                                            }
-                                            placeholder="e.g. 5"
-                                        />
-                                        <Hint>
-                                            {money(settings.library_per_item)}{' '}
-                                            per library
-                                        </Hint>
-                                    </Section>
-                                    <Section number="06" title="Platform">
-                                        <p>Where will this project run?</p>
-                                        <Select
-                                            value={form.platformType}
-                                            onChange={(value) =>
-                                                update(
-                                                    'platformType',
-                                                    value as FormData['platformType'],
-                                                )
-                                            }
-                                            options={Object.entries(PLATFORMS)}
-                                            placeholder="Choose platform"
-                                        />
-                                    </Section>
-                                    <Section
-                                        number="07"
-                                        title="Additional features"
-                                    >
-                                        <p>Select every applicable feature.</p>
-                                        <div className="mt-3 grid gap-3">
-                                            {ADDONS.map(([key, label]) => (
-                                                <label
-                                                    key={key}
-                                                    className="flex cursor-pointer items-center justify-between gap-3"
-                                                >
-                                                    <span className="flex items-center gap-2">
-                                                        <Checkbox
-                                                            checked={
-                                                                form.addOns[key]
-                                                            }
-                                                            onCheckedChange={() =>
-                                                                update(
-                                                                    'addOns',
-                                                                    {
-                                                                        ...form.addOns,
-                                                                        [key]: !form
-                                                                            .addOns[
-                                                                            key
-                                                                        ],
-                                                                    },
-                                                                )
-                                                            }
-                                                        />
-                                                        {label}
-                                                    </span>
-                                                    <span className="whitespace-nowrap text-muted-foreground">
-                                                        +
-                                                        {money(
-                                                            settings[
-                                                                `addon_${key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)}`
-                                                            ],
-                                                        )}
-                                                    </span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                    </Section>
-                                    <Section number="08" title="Infrastructure">
-                                        <p>Does it need a VPS and domain?</p>
-                                        <Toggle
-                                            value={form.needInfra}
-                                            onChange={(value) =>
-                                                update('needInfra', value)
-                                            }
-                                            yes="Required"
-                                            no="Not required"
-                                        />
-                                        {form.needInfra && (
-                                            <div className="grid gap-3">
+                                            {form.workedBefore === true && (
                                                 <AmountField
-                                                    label="VPS price (per year)"
-                                                    value={form.vpsPrice}
+                                                    label="Last monthly salary"
+                                                    value={form.lastSalary}
                                                     onChange={(value) =>
                                                         update(
-                                                            'vpsPrice',
+                                                            'lastSalary',
                                                             value,
                                                         )
                                                     }
-                                                    placeholder="600,000"
+                                                    placeholder="e.g. 8,000,000"
                                                 />
-                                                <AmountField
-                                                    label="Domain price"
-                                                    value={form.domainPrice}
-                                                    onChange={(value) =>
-                                                        update(
-                                                            'domainPrice',
-                                                            value,
-                                                        )
-                                                    }
-                                                    placeholder="150,000"
-                                                />
-                                            </div>
-                                        )}
-                                    </Section>
-                                    <Section number="09" title="Deadline">
-                                        <p>Choose the delivery urgency.</p>
-                                        <Select
-                                            value={form.deadlineUrgency}
-                                            onChange={(value) =>
-                                                update(
-                                                    'deadlineUrgency',
-                                                    value as FormData['deadlineUrgency'],
-                                                )
-                                            }
-                                            options={Object.entries(
-                                                DEADLINES,
-                                            ).map(([key, label]) => [
-                                                key,
-                                                key === 'rush'
-                                                    ? `${label} (+${settings.urgency_rush_percent}%)`
-                                                    : key === 'asap'
-                                                      ? `${label} (+${settings.urgency_asap_percent}%)`
-                                                      : label,
-                                            ])}
-                                            placeholder="Choose deadline"
-                                        />
-                                    </Section>
-                                    <Section
-                                        number="10"
-                                        title="Revision policy"
-                                    >
-                                        <Select
-                                            value={String(
-                                                form.revisionIncluded,
                                             )}
-                                            onChange={(value) =>
-                                                update(
-                                                    'revisionIncluded',
-                                                    value as FormData['revisionIncluded'],
-                                                )
-                                            }
-                                            options={Object.entries(REVISIONS)}
-                                            placeholder="Choose included revisions"
-                                        />
-                                    </Section>
+                                            {form.workedBefore === false && (
+                                                <AmountField
+                                                    label="Laptop price used for coding"
+                                                    value={form.laptopPrice}
+                                                    onChange={(value) =>
+                                                        update(
+                                                            'laptopPrice',
+                                                            value,
+                                                        )
+                                                    }
+                                                    placeholder="e.g. 10,000,000"
+                                                />
+                                            )}
+                                        </Section>
+                                        <Section
+                                            number="02"
+                                            title="CRUD features"
+                                        >
+                                            <p>
+                                                How many core tables need CRUD?
+                                            </p>
+                                            <AmountInput
+                                                value={form.crudCount}
+                                                onChange={(value) =>
+                                                    update('crudCount', value)
+                                                }
+                                            />
+                                            <Hint>
+                                                {money(settings.crud_per_table)}{' '}
+                                                per table
+                                            </Hint>
+                                        </Section>
+                                        <Section
+                                            number="03"
+                                            title="Login feature"
+                                        >
+                                            <p>Does it need login?</p>
+                                            <Toggle
+                                                value={form.hasLogin}
+                                                onChange={(value) => {
+                                                    update('hasLogin', value);
+
+                                                    if (!value) {
+                                                        update('loginType', '');
+                                                    }
+                                                }}
+                                                yes="Required"
+                                                no="Not required"
+                                            />
+                                            {form.hasLogin && (
+                                                <Select
+                                                    value={form.loginType}
+                                                    onChange={(value) =>
+                                                        update(
+                                                            'loginType',
+                                                            value,
+                                                        )
+                                                    }
+                                                    options={[
+                                                        [
+                                                            'manual',
+                                                            `Manual — ${money(settings.login_manual)}`,
+                                                        ],
+                                                        [
+                                                            'google',
+                                                            `Google — ${money(settings.login_google)}`,
+                                                        ],
+                                                        [
+                                                            'both',
+                                                            `Manual + Google — ${money(settings.login_both)}`,
+                                                        ],
+                                                    ]}
+                                                    placeholder="Choose login type"
+                                                />
+                                            )}
+                                        </Section>
+                                        <Section
+                                            number="04"
+                                            title="Database relations"
+                                        >
+                                            <p>
+                                                How many relations are needed
+                                                between tables?
+                                            </p>
+                                            <AmountInput
+                                                value={form.relationCount}
+                                                onChange={(value) =>
+                                                    update(
+                                                        'relationCount',
+                                                        value,
+                                                    )
+                                                }
+                                            />
+                                            <Hint>
+                                                {money(
+                                                    settings.relation_per_item,
+                                                )}{' '}
+                                                per relation
+                                            </Hint>
+                                        </Section>
+                                        <Section number="05" title="Frontend">
+                                            <p>
+                                                What is the frontend complexity?
+                                            </p>
+                                            <Select
+                                                value={form.frontendLevel}
+                                                onChange={(value) =>
+                                                    update(
+                                                        'frontendLevel',
+                                                        value as FormData['frontendLevel'],
+                                                    )
+                                                }
+                                                options={Object.entries(
+                                                    FRONTEND,
+                                                )}
+                                                placeholder="Choose complexity"
+                                            />
+                                            <AmountField
+                                                label="Third-party library count"
+                                                value={form.libraryCount}
+                                                onChange={(value) =>
+                                                    update(
+                                                        'libraryCount',
+                                                        value,
+                                                    )
+                                                }
+                                                placeholder="e.g. 5"
+                                            />
+                                            <Hint>
+                                                {money(
+                                                    settings.library_per_item,
+                                                )}{' '}
+                                                per library
+                                            </Hint>
+                                        </Section>
+                                        <Section number="06" title="Platform">
+                                            <p>Where will this project run?</p>
+                                            <Select
+                                                value={form.platformType}
+                                                onChange={(value) =>
+                                                    update(
+                                                        'platformType',
+                                                        value as FormData['platformType'],
+                                                    )
+                                                }
+                                                options={Object.entries(
+                                                    PLATFORMS,
+                                                )}
+                                                placeholder="Choose platform"
+                                            />
+                                        </Section>
+                                        <Section
+                                            number="07"
+                                            title="Additional features"
+                                        >
+                                            <p>
+                                                Select every applicable feature.
+                                            </p>
+                                            <div className="mt-3 grid gap-3">
+                                                {ADDONS.map(([key, label]) => (
+                                                    <label
+                                                        key={key}
+                                                        className="flex cursor-pointer items-center justify-between gap-3"
+                                                    >
+                                                        <span className="flex items-center gap-2">
+                                                            <Checkbox
+                                                                checked={
+                                                                    form.addOns[
+                                                                        key
+                                                                    ]
+                                                                }
+                                                                onCheckedChange={() =>
+                                                                    update(
+                                                                        'addOns',
+                                                                        {
+                                                                            ...form.addOns,
+                                                                            [key]: !form
+                                                                                .addOns[
+                                                                                key
+                                                                            ],
+                                                                        },
+                                                                    )
+                                                                }
+                                                            />
+                                                            {label}
+                                                        </span>
+                                                        <span className="whitespace-nowrap text-muted-foreground">
+                                                            +
+                                                            {money(
+                                                                settings[
+                                                                    `addon_${key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)}`
+                                                                ],
+                                                            )}
+                                                        </span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </Section>
+                                        <Section
+                                            number="08"
+                                            title="Infrastructure"
+                                        >
+                                            <p>
+                                                Does it need a VPS and domain?
+                                            </p>
+                                            <Toggle
+                                                value={form.needInfra}
+                                                onChange={(value) =>
+                                                    update('needInfra', value)
+                                                }
+                                                yes="Required"
+                                                no="Not required"
+                                            />
+                                            {form.needInfra && (
+                                                <div className="grid gap-3">
+                                                    <AmountField
+                                                        label="VPS price (per year)"
+                                                        value={form.vpsPrice}
+                                                        onChange={(value) =>
+                                                            update(
+                                                                'vpsPrice',
+                                                                value,
+                                                            )
+                                                        }
+                                                        placeholder="600,000"
+                                                    />
+                                                    <AmountField
+                                                        label="Domain price"
+                                                        value={form.domainPrice}
+                                                        onChange={(value) =>
+                                                            update(
+                                                                'domainPrice',
+                                                                value,
+                                                            )
+                                                        }
+                                                        placeholder="150,000"
+                                                    />
+                                                </div>
+                                            )}
+                                        </Section>
+                                        <Section number="09" title="Deadline">
+                                            <p>Choose the delivery urgency.</p>
+                                            <Select
+                                                value={form.deadlineUrgency}
+                                                onChange={(value) =>
+                                                    update(
+                                                        'deadlineUrgency',
+                                                        value as FormData['deadlineUrgency'],
+                                                    )
+                                                }
+                                                options={Object.entries(
+                                                    DEADLINES,
+                                                ).map(([key, label]) => [
+                                                    key,
+                                                    key === 'rush'
+                                                        ? `${label} (+${settings.urgency_rush_percent}%)`
+                                                        : key === 'asap'
+                                                          ? `${label} (+${settings.urgency_asap_percent}%)`
+                                                          : label,
+                                                ])}
+                                                placeholder="Choose deadline"
+                                            />
+                                        </Section>
+                                        <Section
+                                            number="10"
+                                            title="Revision policy"
+                                        >
+                                            <Select
+                                                value={String(
+                                                    form.revisionIncluded,
+                                                )}
+                                                onChange={(value) =>
+                                                    update(
+                                                        'revisionIncluded',
+                                                        value as FormData['revisionIncluded'],
+                                                    )
+                                                }
+                                                options={Object.entries(
+                                                    REVISIONS,
+                                                )}
+                                                placeholder="Choose included revisions"
+                                            />
+                                        </Section>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="min-h-0 overflow-y-auto">
-                                <Aside
-                                    calc={calc}
-                                    pricing={settings}
-                                    complete={complete}
-                                    name={name}
-                                    setName={setName}
-                                    projectId={projectId}
-                                    setProjectId={setProjectId}
-                                    projects={projects}
-                                    editing={editing}
-                                    submit={submit}
-                                    reset={reset}
-                                />
+                                <div className="min-h-0 overflow-y-auto">
+                                    <Aside
+                                        calc={calc}
+                                        pricing={settings}
+                                        complete={complete}
+                                        name={name}
+                                        setName={setName}
+                                        projectId={projectId}
+                                        setProjectId={setProjectId}
+                                        projects={projects}
+                                        editing={editing}
+                                        submit={submit}
+                                        reset={reset}
+                                    />
+                                </div>
                             </div>
                         </div>
                     )}
-                    {tab === 'saved' && (
+                    {view === 'saved' && (
                         <Saved calculations={calculations} edit={edit} />
                     )}
-                    {tab === 'settings' && (
+                    {view === 'settings' && (
                         <Settings
                             pricing={pricing}
                             setPricing={setPricing}
@@ -540,6 +598,55 @@ export default function PriceCalculator({
                 </div>
             </PageBody>
         </div>
+    );
+}
+
+function EnquiryReference({ enquiry }: { enquiry: Enquiry }) {
+    const expectedBudget = enquiry.expected_budget
+        ? `${enquiry.expected_budget_currency ?? 'IDR'} ${Number(
+              enquiry.expected_budget,
+          ).toLocaleString('id-ID', { maximumFractionDigits: 0 })}`
+        : 'Not provided';
+
+    return (
+        <section className="shrink-0 border-b pb-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                    <p className="text-xs font-medium text-muted-foreground uppercase">
+                        Enquiry reference
+                    </p>
+                    <h2 className="mt-1 font-semibold">{enquiry.title}</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        {enquiry.customer_name ?? 'Unknown customer'} · Budget:{' '}
+                        {expectedBudget} · Delivery:{' '}
+                        {enquiry.desired_delivery_date ?? 'Not provided'}
+                    </p>
+                </div>
+                <Button asChild size="sm" variant="outline">
+                    <Link href={`/ideabook?entry=${enquiry.id}`}>
+                        <BookOpen className="size-4" />
+                        View enquiry
+                    </Link>
+                </Button>
+            </div>
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                <div className="min-w-0 border-t pt-3">
+                    <h3 className="text-sm font-medium">
+                        Customer requirements
+                    </h3>
+                    <p className="mt-2 max-h-32 overflow-y-auto text-sm leading-6 whitespace-pre-wrap">
+                        {enquiry.content}
+                    </p>
+                </div>
+                <div className="min-w-0 border-t pt-3">
+                    <h3 className="text-sm font-medium">Proposed solution</h3>
+                    <p className="mt-2 max-h-32 overflow-y-auto text-sm leading-6 whitespace-pre-wrap">
+                        {enquiry.proposed_solution ??
+                            'No proposed solution has been saved yet.'}
+                    </p>
+                </div>
+            </div>
+        </section>
     );
 }
 
@@ -769,6 +876,7 @@ function Saved({
                 <thead className="bg-muted/50 text-left">
                     <tr>
                         <th className="px-4 py-3">Name</th>
+                        <th className="px-4 py-3">Enquiry</th>
                         <th className="px-4 py-3">Project</th>
                         <th className="px-4 py-3">Saved</th>
                         <th className="px-4 py-3 text-right">Total</th>
@@ -780,6 +888,19 @@ function Saved({
                         <tr key={calculation.id} className="border-t">
                             <td className="px-4 py-3 font-medium">
                                 {calculation.name}
+                            </td>
+                            <td className="px-4 py-3">
+                                {calculation.problem ? (
+                                    <Link
+                                        className="text-primary underline-offset-4 hover:underline"
+                                        href={`/ideabook?entry=${calculation.problem.id}`}
+                                    >
+                                        {calculation.problem.customer_name ??
+                                            calculation.problem.title}
+                                    </Link>
+                                ) : (
+                                    '-'
+                                )}
                             </td>
                             <td className="px-4 py-3">
                                 {calculation.project?.name ?? '-'}
@@ -828,7 +949,7 @@ function Saved({
                     {calculations.length === 0 && (
                         <tr>
                             <td
-                                colSpan={5}
+                                colSpan={6}
                                 className="px-4 py-12 text-center text-muted-foreground"
                             >
                                 No saved calculations yet.
@@ -907,26 +1028,6 @@ function SettingsInput({
                 onChange(Number(digits) || 0);
             }}
         />
-    );
-}
-function Tab({
-    active,
-    onClick,
-    children,
-}: {
-    active: boolean;
-    onClick: () => void;
-    children: React.ReactNode;
-}) {
-    return (
-        <Button
-            type="button"
-            variant="ghost"
-            className={`rounded-b-none ${active ? 'border-b-2 border-primary' : ''}`}
-            onClick={onClick}
-        >
-            {children}
-        </Button>
     );
 }
 function Section({

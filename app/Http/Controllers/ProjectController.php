@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\PriceCalculation;
+use App\Models\Problem;
 use App\Models\Project;
 use App\Models\ProjectOwner;
 use App\Models\Service;
@@ -39,6 +40,11 @@ class ProjectController extends Controller
     public function create(Request $request)
     {
         $this->rememberFormOrigin($request);
+        $conversionEntry = $request->integer('ideabook_entry_id')
+            ? Problem::forCurrentUser()
+                ->where('entry_type', 'enquiry')
+                ->findOrFail($request->integer('ideabook_entry_id'))
+            : null;
 
         return Inertia::render('projects/form', [
             'project' => null,
@@ -47,7 +53,12 @@ class ProjectController extends Controller
                 ->whereNull('project_id')
                 ->latest()
                 ->get(),
-            'selectedOwner' => $request->integer('owner_id') ?: null,
+            'selectedOwner' => $conversionEntry?->project_owner_id ?? ($request->integer('owner_id') ?: null),
+            'conversionEntry' => $conversionEntry ? [
+                'id' => $conversionEntry->id,
+                'title' => $conversionEntry->title,
+                'customer_name' => $conversionEntry->customer_name,
+            ] : null,
         ]);
     }
 
@@ -55,11 +66,23 @@ class ProjectController extends Controller
     {
         $data = $this->validated($request);
         $priceCalculationIds = $data['price_calculation_ids'] ?? [];
-        unset($data['price_calculation_ids']);
+        $ideabookEntryId = $data['ideabook_entry_id'] ?? null;
+        unset($data['price_calculation_ids'], $data['ideabook_entry_id']);
 
         $project = Project::create($data + ['user_id' => $request->user()->id]);
         $this->syncPriceCalculations($project, $priceCalculationIds);
         $this->ensureDefaultServices($project);
+
+        if ($ideabookEntryId) {
+            Problem::forCurrentUser()
+                ->where('entry_type', 'enquiry')
+                ->findOrFail($ideabookEntryId)
+                ->update([
+                    'project_id' => $project->id,
+                    'project_owner_id' => $project->owner_id,
+                    'status' => 'won',
+                ]);
+        }
 
         return $this->redirectToFormOrigin(route('projects.index'));
     }
@@ -84,7 +107,7 @@ class ProjectController extends Controller
         $this->authorizeProject($project);
         $data = $this->validated($request);
         $priceCalculationIds = $data['price_calculation_ids'] ?? [];
-        unset($data['price_calculation_ids']);
+        unset($data['price_calculation_ids'], $data['ideabook_entry_id']);
 
         $project->update($data);
         $this->syncPriceCalculations($project, $priceCalculationIds);
@@ -105,7 +128,10 @@ class ProjectController extends Controller
     {
         return $request->validate([
             'name' => ['required', 'max:255'],
-            'owner_id' => ['required', 'exists:project_owners,id'],
+            'owner_id' => [
+                'required',
+                Rule::exists('project_owners', 'id')->where('user_id', $request->user()->id),
+            ],
             'url' => ['nullable', 'string', 'max:255'],
             'referrer' => ['nullable', 'string', 'max:255'],
             'commission_fee' => ['nullable', 'numeric'],
@@ -113,6 +139,12 @@ class ProjectController extends Controller
             'price_calculation_ids' => ['array'],
             'price_calculation_ids.*' => [
                 Rule::exists('price_calculations', 'id')->where('user_id', $request->user()->id),
+            ],
+            'ideabook_entry_id' => [
+                'nullable',
+                Rule::exists('problems', 'id')
+                    ->where('user_id', $request->user()->id)
+                    ->where('entry_type', 'enquiry'),
             ],
         ]);
     }

@@ -43,6 +43,11 @@ class Project extends Model
         return $this->hasMany(PriceCalculation::class)->latest();
     }
 
+    public function ideabookEntries(): HasMany
+    {
+        return $this->hasMany(Problem::class);
+    }
+
     public function scopeForCurrentUser($query)
     {
         return $query->where('user_id', auth()->id());

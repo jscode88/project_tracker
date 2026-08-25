@@ -55,7 +55,7 @@ export function PageHeader({
 
 export function PageBody({ children }: { children: ReactNode }) {
     return (
-        <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto p-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
             {children}
         </div>
     );

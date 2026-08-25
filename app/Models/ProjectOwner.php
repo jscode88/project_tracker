@@ -22,6 +22,11 @@ class ProjectOwner extends Model
         return $this->hasMany(Project::class, 'owner_id')->orderBy('name');
     }
 
+    public function ideabookEntries(): HasMany
+    {
+        return $this->hasMany(Problem::class);
+    }
+
     public function scopeForCurrentUser($query)
     {
         return $query->where('user_id', auth()->id());

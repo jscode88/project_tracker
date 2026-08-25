@@ -1,5 +1,15 @@
 import { Link } from '@inertiajs/react';
-import { Building2, Calculator, CircleDollarSign, FolderKanban, LayoutGrid, Shield, UserRound, UsersRound } from 'lucide-react';
+import {
+    BookOpen,
+    Building2,
+    Calculator,
+    CircleDollarSign,
+    FolderKanban,
+    LayoutGrid,
+    Shield,
+    UserRound,
+    UsersRound,
+} from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -59,9 +69,28 @@ const administrationNavItems: NavItem[] = [
 
 const toolsNavItems: NavItem[] = [
     {
+        title: 'IdeaBook',
+        href: '/ideabook',
+        icon: BookOpen,
+    },
+    {
         title: 'Price Calculator',
         href: '/price-calculator',
         icon: Calculator,
+        children: [
+            {
+                title: 'Calculator',
+                href: '/price-calculator',
+            },
+            {
+                title: 'Saved Calculations',
+                href: '/price-calculator/saved',
+            },
+            {
+                title: 'Settings',
+                href: '/price-calculator/settings',
+            },
+        ],
     },
 ];
 
@@ -85,7 +114,10 @@ export function AppSidebar() {
             <SidebarContent>
                 <NavMain items={mainNavItems} />
                 <NavMain items={toolsNavItems} label="Tool" />
-                <NavMain items={administrationNavItems} label="Administration" />
+                <NavMain
+                    items={administrationNavItems}
+                    label="Administration"
+                />
             </SidebarContent>
 
             <SidebarFooter>

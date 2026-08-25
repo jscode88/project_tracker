@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\CompanyController;
+use App\Http\Controllers\IdeaController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PriceCalculatorController;
+use App\Http\Controllers\ProblemController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectOwnerController;
 use App\Http\Controllers\ServiceController;
@@ -35,11 +37,29 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('dashboard');
 
     Route::get('price-calculator', [PriceCalculatorController::class, 'index'])->name('price-calculator.index');
+    Route::get('price-calculator/saved', [PriceCalculatorController::class, 'saved'])->name('price-calculator.saved');
+    Route::get('price-calculator/settings', [PriceCalculatorController::class, 'settings'])->name('price-calculator.settings');
     Route::get('price-calculator/{priceCalculation}', [PriceCalculatorController::class, 'show'])->name('price-calculator.show');
     Route::post('price-calculator', [PriceCalculatorController::class, 'store'])->name('price-calculator.store');
     Route::put('price-calculator/{priceCalculation}', [PriceCalculatorController::class, 'update'])->name('price-calculator.update');
     Route::delete('price-calculator/{priceCalculation}', [PriceCalculatorController::class, 'destroy'])->name('price-calculator.destroy');
     Route::put('price-calculator-settings', [PriceCalculatorController::class, 'updateSettings'])->name('price-calculator.settings.update');
+
+    Route::get('ideabook', [IdeaController::class, 'index'])->name('ideabook.index');
+    Route::get('ideabook/pipeline', [ProblemController::class, 'pipeline'])->name('ideabook.pipeline');
+    Route::post('ideabook/project-owners', [ProblemController::class, 'storeProjectOwner'])->name('ideabook.project-owners.store');
+    Route::get('ideabook/ideas', [IdeaController::class, 'list'])->name('ideabook.ideas.index');
+    Route::post('ideabook/ideas', [IdeaController::class, 'store'])->name('ideabook.ideas.store');
+    Route::put('ideabook/ideas/{idea}', [IdeaController::class, 'update'])->name('ideabook.ideas.update');
+    Route::delete('ideabook/ideas/{idea}', [IdeaController::class, 'destroy'])->name('ideabook.ideas.destroy');
+    Route::get('ideabook/problems', [ProblemController::class, 'list'])->name('ideabook.problems.index');
+    Route::post('ideabook/problems', [ProblemController::class, 'store'])->name('ideabook.problems.store');
+    Route::put('ideabook/problems/{problem}', [ProblemController::class, 'update'])->name('ideabook.problems.update');
+    Route::delete('ideabook/problems/{problem}', [ProblemController::class, 'destroy'])->name('ideabook.problems.destroy');
+    Route::put('ideabook/problems/{problem}/idea', [ProblemController::class, 'linkIdea'])->name('ideabook.problems.link-idea');
+    Route::post('ideabook/problems/{problem}/idea', [ProblemController::class, 'createLinkedIdea'])->name('ideabook.problems.create-linked-idea');
+    Route::put('ideabook/problems/{problem}/price-calculations/{priceCalculation}', [ProblemController::class, 'linkPriceCalculation'])->name('ideabook.problems.price-calculations.link');
+    Route::delete('ideabook/problems/{problem}/price-calculations/{priceCalculation}', [ProblemController::class, 'unlinkPriceCalculation'])->name('ideabook.problems.price-calculations.unlink');
 
     Route::get('project-owners/{projectOwner}/projects', [ProjectController::class, 'index'])->name('project-owners.projects.index');
     Route::get('projects/{project}/services', [ServiceController::class, 'index'])->name('projects.services.index');

@@ -43,4 +43,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(PriceCalculation::class);
     }
+
+    public function ideas(): HasMany
+    {
+        return $this->hasMany(Idea::class);
+    }
+
+    public function problems(): HasMany
+    {
+        return $this->hasMany(Problem::class);
+    }
 }
