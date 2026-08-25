@@ -223,6 +223,9 @@ export default function Dashboard({
         initialEntry?.id ?? null,
     );
     const [isSaving, setIsSaving] = useState(false);
+    const [problemErrors, setProblemErrors] = useState<Record<string, string>>(
+        {},
+    );
     const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
     const [regenerateTitleOnUpdate, setRegenerateTitleOnUpdate] =
         useState(false);
@@ -331,6 +334,7 @@ export default function Dashboard({
         setDesiredDeliveryDate('');
         setFollowUpDate('');
         setNextAction('');
+        setProblemErrors({});
         setRegenerateTitleOnUpdate(false);
     }
 
@@ -348,6 +352,7 @@ export default function Dashboard({
     }
 
     function openExistingProblem(entry: ProblemEntry) {
+        setProblemErrors({});
         setActiveProblemId(entry.id);
         setProblemDraft(entry.content);
         setTitleDraft(entry.title);
@@ -524,6 +529,7 @@ export default function Dashboard({
         }
 
         setIsSaving(true);
+        setProblemErrors({});
 
         const payload = {
             title: titleDraft.trim() || null,
@@ -558,12 +564,16 @@ export default function Dashboard({
             resetIdeaEditorState();
             closeAllEditors();
         };
+        const onError = (errors: Record<string, string>) => {
+            setProblemErrors(errors);
+        };
 
         if (activeProblemId !== null) {
             router.put(`/ideabook/problems/${activeProblemId}`, payload, {
                 preserveScroll: true,
                 onFinish,
                 onSuccess,
+                onError,
             });
 
             return;
@@ -573,6 +583,7 @@ export default function Dashboard({
             preserveScroll: true,
             onFinish,
             onSuccess,
+            onError,
         });
     }
 
@@ -1516,6 +1527,29 @@ export default function Dashboard({
                                     </Button>
                                 </div>
                             </div>
+
+                            {Object.keys(problemErrors).length > 0 && (
+                                <div
+                                    role="alert"
+                                    className="mt-4 flex gap-3 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+                                >
+                                    <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                                    <div>
+                                        <p className="font-medium">
+                                            Unable to save this entry
+                                        </p>
+                                        <ul className="mt-1 space-y-1">
+                                            {Object.entries(problemErrors).map(
+                                                ([field, message]) => (
+                                                    <li key={field}>
+                                                        {message}
+                                                    </li>
+                                                ),
+                                            )}
+                                        </ul>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="mt-4 flex items-center justify-between gap-4 border-t border-border pt-4">
                                 <div className="space-y-1">

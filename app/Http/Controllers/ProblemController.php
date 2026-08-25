@@ -257,6 +257,7 @@ class ProblemController extends Controller
             'status' => ['required', Rule::in($statusOptions)],
             'project_owner_id' => [
                 'required_if:entry_type,enquiry',
+                'nullable',
                 Rule::exists('project_owners', 'id')->where('user_id', $request->user()->id),
             ],
             'project_id' => [
