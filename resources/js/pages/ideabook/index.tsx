@@ -7,6 +7,7 @@ import {
     Info,
     Lightbulb,
     Link2,
+    Maximize2,
     Plus,
     Unlink,
 } from 'lucide-react';
@@ -167,6 +168,8 @@ export default function Dashboard({
     const [isProblemEditorOpen, setIsProblemEditorOpen] = useState(
         Boolean(initialEntry),
     );
+    const [isProblemTextareaExpanded, setIsProblemTextareaExpanded] =
+        useState(false);
     const [isIdeaEditorOpen, setIsIdeaEditorOpen] = useState(
         Boolean(initialSolution),
     );
@@ -319,6 +322,7 @@ export default function Dashboard({
     }, [isIdeaEditorOpen, isProblemEditorOpen]);
 
     function resetProblemEditorState() {
+        setIsProblemTextareaExpanded(false);
         setProblemDraft('');
         setTitleDraft('');
         setActiveProblemId(null);
@@ -398,6 +402,7 @@ export default function Dashboard({
     }
 
     function closeAllEditors() {
+        setIsProblemTextareaExpanded(false);
         setIsIdeaEditorOpen(false);
         setIsProblemEditorOpen(false);
     }
@@ -1147,12 +1152,28 @@ export default function Dashboard({
                                 </div>
                             </div>
 
-                            <div className="grid min-h-[180px] flex-1 gap-2">
-                                <Label htmlFor="entry-details">
-                                    {entryType === 'enquiry'
-                                        ? 'Customer requirements'
-                                        : 'Problem description'}
-                                </Label>
+                            <div className="grid min-h-[180px] flex-1 grid-rows-[auto_minmax(0,1fr)] gap-2">
+                                <div className="flex items-center justify-between gap-2">
+                                    <Label htmlFor="entry-details">
+                                        {entryType === 'enquiry'
+                                            ? 'Customer requirements'
+                                            : 'Problem description'}
+                                    </Label>
+                                    <Button
+                                        type="button"
+                                        size="icon"
+                                        variant="ghost"
+                                        title="Expand editor"
+                                        onClick={() =>
+                                            setIsProblemTextareaExpanded(true)
+                                        }
+                                    >
+                                        <Maximize2 className="size-4" />
+                                        <span className="sr-only">
+                                            Expand editor
+                                        </span>
+                                    </Button>
+                                </div>
                                 <Textarea
                                     id="entry-details"
                                     ref={problemTextareaRef}
@@ -1747,6 +1768,56 @@ export default function Dashboard({
                     </div>
                 </div>
             </div>
+
+            <Dialog
+                open={isProblemTextareaExpanded}
+                onOpenChange={setIsProblemTextareaExpanded}
+            >
+                <DialogContent className="flex h-[min(85svh,56rem)] flex-col sm:max-w-5xl">
+                    <DialogHeader className="shrink-0">
+                        <DialogTitle>
+                            {entryType === 'enquiry'
+                                ? 'Customer requirements'
+                                : 'Problem description'}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {entryType === 'enquiry'
+                                ? 'Describe the customer need, constraints, and desired outcome.'
+                                : 'Describe the problem, its impact, and relevant context.'}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Textarea
+                        autoFocus
+                        aria-label={
+                            entryType === 'enquiry'
+                                ? 'Expanded customer requirements editor'
+                                : 'Expanded problem description editor'
+                        }
+                        wrap="soft"
+                        value={problemDraft}
+                        onChange={(event) =>
+                            setProblemDraft(event.currentTarget.value)
+                        }
+                        placeholder={
+                            entryType === 'enquiry'
+                                ? 'Describe the customer need, constraints, and desired outcome...'
+                                : 'Describe the problem here...'
+                        }
+                        className="min-h-0 flex-1 resize-none overflow-x-hidden bg-background px-4 py-4 text-sm leading-6"
+                    />
+                    <DialogFooter className="shrink-0 items-center sm:justify-between">
+                        <p className="text-sm text-muted-foreground">
+                            {problemDraft.trim().length} characters
+                        </p>
+                        <Button
+                            type="button"
+                            onClick={() => setIsProblemTextareaExpanded(false)}
+                        >
+                            Done
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <Dialog
                 open={isOwnerDialogOpen}
