@@ -1152,7 +1152,7 @@ export default function Dashboard({
                                 </div>
                             </div>
 
-                            <div className="grid min-h-[180px] flex-1 grid-rows-[auto_minmax(0,1fr)] gap-2">
+                            <div className="grid shrink-0 gap-2">
                                 <div className="flex items-center justify-between gap-2">
                                     <Label htmlFor="entry-details">
                                         {entryType === 'enquiry'
@@ -1206,7 +1206,7 @@ export default function Dashboard({
                                             closeAllEditors();
                                         }
                                     }}
-                                    className="h-full min-h-[180px] resize-none overflow-x-hidden bg-background px-4 py-4 text-sm leading-6"
+                                    className="h-56 min-h-56 resize-none overflow-x-hidden bg-background px-4 py-4 text-sm leading-6"
                                 />
                             </div>
 
