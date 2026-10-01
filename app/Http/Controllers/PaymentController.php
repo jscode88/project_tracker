@@ -35,19 +35,25 @@ class PaymentController extends Controller
         return Inertia::render('payments/index', [
             'payments' => (clone $base)->orderByDesc('date')->paginate(10)->withQueryString(),
             'summary' => (clone $base)
-                ->selectRaw('project_id, currency, SUM(amount) as amount')
+                ->selectRaw('project_id, currency, SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END) as received, SUM(CASE WHEN amount < 0 THEN -amount ELSE 0 END) as expenses, SUM(amount) as net')
                 ->groupBy('project_id', 'currency')
                 ->with('project')
                 ->orderByDesc('amount')
                 ->get(),
             'monthlySummary' => (clone $base)
-                ->selectRaw('project_id, currency, YEAR(date) as year, MONTH(date) as month, SUM(amount) as amount')
+                ->selectRaw('project_id, currency, YEAR(date) as year, MONTH(date) as month, SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END) as received, SUM(CASE WHEN amount < 0 THEN -amount ELSE 0 END) as expenses, SUM(amount) as net')
                 ->groupBy('project_id', 'currency', 'year', 'month')
                 ->orderByDesc('year')
                 ->orderBy('month')
                 ->get(),
+            'monthlyGrandTotal' => (clone $base)
+                ->selectRaw('currency, YEAR(date) as year, MONTH(date) as month, SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END) as received, SUM(CASE WHEN amount < 0 THEN -amount ELSE 0 END) as expenses, SUM(amount) as net')
+                ->groupBy('currency', 'year', 'month')
+                ->orderByDesc('year')
+                ->orderBy('month')
+                ->get(),
             'grandTotal' => (clone $base)
-                ->selectRaw('currency, SUM(amount) as amount')
+                ->selectRaw('currency, SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END) as received, SUM(CASE WHEN amount < 0 THEN -amount ELSE 0 END) as expenses, SUM(amount) as net')
                 ->groupBy('currency')
                 ->orderByDesc('amount')
                 ->get(),

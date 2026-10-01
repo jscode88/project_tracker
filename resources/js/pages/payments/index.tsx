@@ -23,26 +23,59 @@ interface SummaryRow {
     project_id: number;
     project?: Project;
     currency: string;
-    amount: number;
+    received: number;
+    expenses: number;
+    net: number;
 }
 
 interface TotalRow {
     currency: string;
-    amount: number;
+    received: number;
+    expenses: number;
+    net: number;
 }
 
 interface MonthlySummaryRow {
-    project_id: number;
+    project_id?: number;
     currency: string;
     year: number;
     month: number;
-    amount: number;
+    received: number;
+    expenses: number;
+    net: number;
+}
+
+function TotalsTable({ received, expenses, net, currency }: {
+    received: number;
+    expenses: number;
+    net: number;
+    currency: string;
+}) {
+    return (
+        <table className="w-full table-fixed text-xs sm:text-sm">
+            <thead>
+                <tr className="text-left text-muted-foreground">
+                    <th className="pb-1 pr-1 font-medium">Received</th>
+                    <th className="px-1 pb-1 text-right font-medium">Expenses</th>
+                    <th className="pb-1 pl-1 text-right font-medium">Net</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td className="pr-1 font-semibold">{money(received, currency)}</td>
+                    <td className="px-1 text-right font-semibold text-destructive">{money(expenses, currency)}</td>
+                    <td className="pl-1 text-right font-semibold">{money(net, currency)}</td>
+                </tr>
+            </tbody>
+        </table>
+    );
 }
 
 export default function PaymentsIndex({
     payments,
     summary,
     monthlySummary,
+    monthlyGrandTotal,
     grandTotal,
     project,
     years,
@@ -51,6 +84,7 @@ export default function PaymentsIndex({
     payments: Paginated<Payment>;
     summary: SummaryRow[];
     monthlySummary: MonthlySummaryRow[];
+    monthlyGrandTotal: MonthlySummaryRow[];
     grandTotal: TotalRow[];
     project?: Project | null;
     years: number[];
@@ -111,24 +145,37 @@ export default function PaymentsIndex({
                             ? 'for all years'
                             : `in ${selectedYear}`}
                     </div>
-                    {grandTotal.length ? (
-                        grandTotal.map((row) => (
-                            <div
-                                key={row.currency}
-                                className={
-                                    row.amount < 0
-                                        ? 'mt-2 text-xl font-semibold text-destructive'
-                                        : 'mt-2 text-xl font-semibold'
-                                }
-                            >
-                                {money(row.amount, row.currency)}
+                    <div className="mt-3 space-y-4">
+                        {grandTotal.map((row) => (
+                            <div key={row.currency}>
+                                <div className="mb-2 text-xs font-medium text-muted-foreground">{row.currency}</div>
+                                <TotalsTable received={row.received} expenses={row.expenses} net={row.net} currency={row.currency} />
                             </div>
-                        ))
-                    ) : (
-                        <div className="mt-2 text-xl font-semibold">
-                            {money(0)}
-                        </div>
-                    )}
+                        ))}
+                    </div>
+                    <Collapsible className="mt-3 border-t pt-3">
+                        <CollapsibleTrigger asChild>
+                            <Button type="button" variant="ghost" size="sm" className="group w-full justify-between px-2">
+                                Monthly totals
+                                <ChevronDown className="size-4 transition-transform group-data-[state=open]:rotate-180" />
+                            </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                            <div className="mt-3">
+                                <table className="w-full table-fixed text-xs sm:text-sm">
+                                    <thead><tr className="border-b text-left text-muted-foreground"><th className="w-[27%] py-2 pr-1 font-medium">Month</th><th className="w-[25%] px-1 py-2 text-right font-medium">Received</th><th className="w-[25%] px-1 py-2 text-right font-medium">Expenses</th><th className="w-[23%] py-2 pl-1 text-right font-medium">Net</th></tr></thead>
+                                    <tbody>{monthlyGrandTotal.map((month) => (
+                                        <tr key={`${month.currency}-${month.year}-${month.month}`} className="border-b last:border-0">
+                                            <td className="py-2 pr-1 font-medium leading-tight">{new Intl.DateTimeFormat(undefined, { month: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(month.year, month.month - 1, 1)))} {month.year}<span className="block text-muted-foreground">{month.currency}</span></td>
+                                            <td className="px-1 py-2 text-right">{money(month.received, month.currency)}</td>
+                                            <td className="px-1 py-2 text-right text-destructive">{money(month.expenses, month.currency)}</td>
+                                            <td className="py-2 pl-1 text-right">{money(month.net, month.currency)}</td>
+                                        </tr>
+                                    ))}</tbody>
+                                </table>
+                            </div>
+                        </CollapsibleContent>
+                    </Collapsible>
                 </div>
                 <div className="grid gap-3 md:grid-cols-3">
                     {summary.map((row) => (
@@ -139,30 +186,29 @@ export default function PaymentsIndex({
                             <div className="min-h-10 text-sm leading-5 text-muted-foreground">
                                 {row.project?.name ?? 'Project'}
                             </div>
-                            <div className="mt-2 text-xl font-semibold">
-                                {money(row.amount, row.currency)}
-                            </div>
+                            <div className="mt-2"><TotalsTable received={row.received} expenses={row.expenses} net={row.net} currency={row.currency} /></div>
                             <Collapsible className="mt-3 border-t pt-3">
                                 <CollapsibleTrigger asChild>
-                                    <Button type="button" variant="ghost" size="sm" className="w-full justify-between px-2">
+                                    <Button type="button" variant="ghost" size="sm" className="group w-full justify-between px-2">
                                         Monthly totals
-                                        <ChevronDown className="size-4" />
+                                        <ChevronDown className="size-4 transition-transform group-data-[state=open]:rotate-180" />
                                     </Button>
                                 </CollapsibleTrigger>
                                 <CollapsibleContent>
-                                    <div className="mt-2 space-y-2 text-sm">
-                                        {monthlySummary
-                                            .filter((month) => month.project_id === row.project_id && month.currency === row.currency)
-                                            .map((month) => (
-                                                <div key={`${month.year}-${month.month}`} className="flex justify-between gap-3">
-                                                    <span className="text-muted-foreground">
-                                                        {new Intl.DateTimeFormat(undefined, { month: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(month.year, month.month - 1, 1)))} {month.year}
-                                                    </span>
-                                                    <span className={month.amount < 0 ? 'text-destructive' : ''}>
-                                                        {money(month.amount, month.currency)}
-                                                    </span>
-                                                </div>
-                                            ))}
+                                    <div className="mt-2">
+                                        <table className="w-full table-fixed text-xs sm:text-sm">
+                                            <thead><tr className="border-b text-left text-muted-foreground"><th className="w-[27%] py-2 pr-1 font-medium">Month</th><th className="w-[25%] px-1 py-2 text-right font-medium">Received</th><th className="w-[25%] px-1 py-2 text-right font-medium">Expenses</th><th className="w-[23%] py-2 pl-1 text-right font-medium">Net</th></tr></thead>
+                                            <tbody>{monthlySummary
+                                                .filter((month) => month.project_id === row.project_id && month.currency === row.currency)
+                                                .map((month) => (
+                                                    <tr key={`${month.year}-${month.month}`} className="border-b last:border-0">
+                                                        <td className="py-2 pr-1 font-medium">{new Intl.DateTimeFormat(undefined, { month: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(month.year, month.month - 1, 1)))} {month.year}</td>
+                                                        <td className="px-1 py-2 text-right">{money(month.received, month.currency)}</td>
+                                                        <td className="px-1 py-2 text-right text-destructive">{money(month.expenses, month.currency)}</td>
+                                                        <td className="py-2 pl-1 text-right">{money(month.net, month.currency)}</td>
+                                                    </tr>
+                                                ))}</tbody>
+                                        </table>
                                     </div>
                                 </CollapsibleContent>
                             </Collapsible>
