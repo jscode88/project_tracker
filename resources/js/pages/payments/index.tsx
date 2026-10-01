@@ -1,4 +1,5 @@
 import { router } from '@inertiajs/react';
+import { ChevronDown } from 'lucide-react';
 import {
     CrudActions,
     DataTable,
@@ -14,6 +15,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import type { Paginated, Payment, Project } from '@/types';
 
 interface SummaryRow {
@@ -28,9 +31,18 @@ interface TotalRow {
     amount: number;
 }
 
+interface MonthlySummaryRow {
+    project_id: number;
+    currency: string;
+    year: number;
+    month: number;
+    amount: number;
+}
+
 export default function PaymentsIndex({
     payments,
     summary,
+    monthlySummary,
     grandTotal,
     project,
     years,
@@ -38,6 +50,7 @@ export default function PaymentsIndex({
 }: {
     payments: Paginated<Payment>;
     summary: SummaryRow[];
+    monthlySummary: MonthlySummaryRow[];
     grandTotal: TotalRow[];
     project?: Project | null;
     years: number[];
@@ -129,6 +142,30 @@ export default function PaymentsIndex({
                             <div className="mt-2 text-xl font-semibold">
                                 {money(row.amount, row.currency)}
                             </div>
+                            <Collapsible className="mt-3 border-t pt-3">
+                                <CollapsibleTrigger asChild>
+                                    <Button type="button" variant="ghost" size="sm" className="w-full justify-between px-2">
+                                        Monthly totals
+                                        <ChevronDown className="size-4" />
+                                    </Button>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                    <div className="mt-2 space-y-2 text-sm">
+                                        {monthlySummary
+                                            .filter((month) => month.project_id === row.project_id && month.currency === row.currency)
+                                            .map((month) => (
+                                                <div key={`${month.year}-${month.month}`} className="flex justify-between gap-3">
+                                                    <span className="text-muted-foreground">
+                                                        {new Intl.DateTimeFormat(undefined, { month: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(month.year, month.month - 1, 1)))} {month.year}
+                                                    </span>
+                                                    <span className={month.amount < 0 ? 'text-destructive' : ''}>
+                                                        {money(month.amount, month.currency)}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                    </div>
+                                </CollapsibleContent>
+                            </Collapsible>
                         </div>
                     ))}
                 </div>

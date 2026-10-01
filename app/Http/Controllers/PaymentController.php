@@ -40,6 +40,12 @@ class PaymentController extends Controller
                 ->with('project')
                 ->orderByDesc('amount')
                 ->get(),
+            'monthlySummary' => (clone $base)
+                ->selectRaw('project_id, currency, YEAR(date) as year, MONTH(date) as month, SUM(amount) as amount')
+                ->groupBy('project_id', 'currency', 'year', 'month')
+                ->orderByDesc('year')
+                ->orderBy('month')
+                ->get(),
             'grandTotal' => (clone $base)
                 ->selectRaw('currency, SUM(amount) as amount')
                 ->groupBy('currency')
